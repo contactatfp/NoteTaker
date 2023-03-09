@@ -1,0 +1,54 @@
+aiohttp==3.8.4
+aiosignal==1.3.1
+altgraph @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/altgraph-0.17.2-py2.py3-none-any.whl
+async-timeout==4.0.2
+attrs==22.2.0
+audeer==1.19.0
+audiofile==1.2.1
+audiosegment==0.23.0
+audmath==1.2.1
+Brotli==1.0.9
+certifi==2022.12.7
+cffi==1.15.1
+charset-normalizer==3.1.0
+click==8.1.3
+decorator==4.4.2
+ffmpeg==1.4
+Flask==2.2.2
+frozenlist==1.3.3
+future @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/future-0.18.2-py3-none-any.whl
+idna==3.4
+imageio==2.26.0
+imageio-ffmpeg==0.4.8
+importlib-metadata==6.0.0
+itsdangerous==2.1.2
+Jinja2==3.1.2
+loginform==1.2.0
+lxml==4.9.2
+macholib @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/macholib-1.15.2-py2.py3-none-any.whl
+MarkupSafe==2.1.1
+moviepy==1.0.3
+multidict==6.0.4
+mutagen==1.46.0
+numpy==1.24.2
+openai==0.27.0
+pafy==0.5.5
+Pillow==9.4.0
+proglog==0.1.10
+pycparser==2.21
+pycryptodomex==3.17
+pydub==0.25.1
+pytube==12.1.2
+requests==2.28.2
+six @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/six-1.15.0-py2.py3-none-any.whl
+soundfile==0.12.1
+SQLAlchemy==1.4.46
+tqdm==4.65.0
+urllib3==1.26.14
+webrtcvad==2.0.10
+websockets==10.4
+Werkzeug==2.2.2
+yarl==1.8.2
+youtube-dl==2021.12.17
+yt-dlp==2023.3.4
+zipp==3.11.0
