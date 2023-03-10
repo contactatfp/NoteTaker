@@ -32,15 +32,16 @@ def download_audio():
         'outtmpl': thePath + '.%(ext)s',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'wav'
+            'preferredcodec': 'mp3',
+            'preferredquality': '96'
         }],
         'extractaudio': True,
-        'audioformat': 'wav',
+        'audioformat': 'mp3',
         'noplaylist': True
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
-        transcribe(thePath + '.wav')
+    split_mp3_file(thePath + '.mp3')
 
     return jsonify({'message': 'Audio saved successfully.'})
 
@@ -76,37 +77,43 @@ def download_audio():
 #
 #     # Return the transcription as JSON
 #     return jsonify({'text': transcription_text})
-@app.route('/split-audio', methods=['POST'])
-def split_audio(file):
+def split_mp3_file(filepath):
+    # Check if file exists
+    if not os.path.isfile(filepath):
+        raise ValueError(f"{filepath} is not a file.")
 
-    max_size = 25 * 1024 * 1024
-    output_dir = os.path.join(os.path.dirname(__file__), 'audio', 'split_files')
+    # Get the file size in bytes
+    file_size = os.path.getsize(filepath)
 
-    def split_file(file):
-        file_number = 1
-        while True:
-            # Read up to max_size bytes from the file
-            data = file.read(max_size)
-            if not data:
-                break
+    # Check if file size is greater than 25 MB
+    if file_size > 25 * 1024 * 1024:
+        # Calculate the number of chunks to split the file into
+        num_chunks = (file_size // (25 * 1024 * 1024)) + 1
 
-            # Write the data to a new file in the output directory
-            filename = os.path.join(output_dir, f"file{file_number}.wav")
-            with open(filename, 'wb') as f:
-                f.write(data)
+        # Calculate the size of each chunk
+        chunk_size = file_size // num_chunks
 
-            file_number += 1
+        # Open the input file
+        with open(filepath, 'rb') as f:
+            # Read and write each chunk to a new file
+            for i in range(num_chunks):
+                # Generate the filename for the new chunk
+                filename = f"{os.path.splitext(filepath)[0]}_{i+1}.mp3"
 
-        return file_number - 1
-
-    num_files = split_file(file)
-    return f"File was split into {num_files} files and stored in {output_dir}."
+                # Open the new file for writing
+                with open(filename, 'wb') as chunk_file:
+                    # Write the chunk to the new file
+                    chunk_data = f.read(chunk_size)
+                    chunk_file.write(chunk_data)
+                    transcribe(filename)
+    else:
+        print(f"{filepath} is already under 25 MB.")
+        transcribe(filepath)
 
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe(file_path):
     audio_file = open(file_path, "rb")
-    file_size = os.path.getsize(file_path)
     # if audio_file is bigger than 25MB, split into multiple files inside their own folder
     # if file_size > 25 * 1024 * 1024:
     #     split_audio(audio_file)
