@@ -1,7 +1,9 @@
 import os
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 import openai, json
 import yt_dlp
+from urllib.parse import urlparse, parse_qs
+import re
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
@@ -12,10 +14,95 @@ with open('config.json') as f:
     config = json.load(f)
 openai.api_key = config['OPENAI_API_KEY']
 
+generated_notes = ""
+
 
 @app.route('/')
 def home():
     return render_template('index.html')
+
+
+def generate_college_level_notes(text):
+    prompt = f"summarize these as college level notes with video time stamps and youtube time urls for where the note corresponds with video. the timestamp and urls should be inline with each note: {text}"
+    completion = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        max_tokens=1000,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+    test = completion.choices[0].message
+    print(completion.choices[0].message)
+
+    return test
+
+
+def process_notes(api_response):
+    notes = []
+    content = api_response['content']
+    sections = content.strip().split('\n\n')
+
+    for section in sections:
+        text = section.strip()
+        timestamp = re.search(r'(\d{1,2}:\d{2}:\d{2})', text)
+        url = re.search(r'(https://www.youtube.com/watch\?v=.+)', text)
+
+        if timestamp:
+            timestamp = timestamp.group(1)
+            text = re.sub(r'\d{1,2}:\d{2}:\d{2}', '', text).strip()
+        else:
+            timestamp = 'Not available'
+
+        if url:
+            url = url.group(1)
+            text = re.sub(r'https://www.youtube.com/watch\?v=.+', '', text).strip()
+        else:
+            url = 'Not available'
+
+        notes.append({
+            'text': f"{timestamp} - {text}",
+            'timestamp': timestamp,
+            'url': url
+        })
+
+    return notes
+
+
+# Modify the /notes route to use the global variable for the college_level_notes
+@app.route('/notes', methods=['GET'])
+def notes():
+    # Replace this with the actual college-level notes from your application
+    college_level_notes = process_notes(generated_notes)
+    return render_template('notes.html', notes=college_level_notes)
+
+
+# def process_notes(notes):
+#     # Split the text into paragraphs
+#     paragraphs = notes.split('\n\n')
+#
+#     # Process each paragraph
+#     processed_paragraphs = []
+#     for paragraph in paragraphs:
+#         # Check if the paragraph contains a YouTube URL
+#         if "https://www.youtube.com/watch" in paragraph:
+#             # Extract the URL from the paragraph
+#             url_start = paragraph.index("https://www.youtube.com/watch")
+#             url_end = paragraph.index(")", url_start)
+#             youtube_url = paragraph[url_start:url_end]
+#
+#             # Parse the URL to get the video ID
+#             parsed_url = urlparse(youtube_url)
+#             video_id = parse_qs(parsed_url.query)["v"][0]
+#
+#             # Replace the URL with an actual link
+#             paragraph = paragraph.replace(
+#                 youtube_url,
+#                 f'<a href="{youtube_url}" target="_blank">Video time URL: {video_id}</a>'
+#             )
+#
+#         processed_paragraphs.append(paragraph)
+#
+#     return processed_paragraphs
 
 
 @app.route('/download_audio', methods=['POST'])
@@ -46,37 +133,6 @@ def download_audio():
     return jsonify({'message': 'Audio saved successfully.'})
 
 
-# @app.route('/transcribe', methods=['POST'])
-# def transcribe(file_path):
-#     # Read the saved audio file from disk
-#     with open(file_path, 'rb') as f:
-#         audio_file = f.read()
-#
-#     # Use the OpenAI API to transcribe the audio file
-#     transcription_request = openai.Audio.TranscriptionRequest(
-#         file=audio_file,
-#         model="whisper-1"
-#     )
-#     transcription_response = openai.Audio.transcribe(
-#         transcription_request.model,
-#         transcription_request.file,
-#         prompt=transcription_request.prompt,
-#         response_format=transcription_request.response_format,
-#         temperature=transcription_request.temperature,
-#         language=transcription_request.language
-#     )
-#     transcription_text = transcription_response['text']
-#
-#     # Save the transcription as a text file
-#     text_file_name = os.path.splitext(file_path)[0] + '.txt'
-#     with open(text_file_name, 'w') as f:
-#         f.write(transcription_text)
-#
-#     mytext = jsonify({'text': transcription_text})
-#     print(mytext['text'])
-#
-#     # Return the transcription as JSON
-#     return jsonify({'text': transcription_text})
 def split_mp3_file(filepath):
     # Check if file exists
     if not os.path.isfile(filepath):
@@ -98,7 +154,7 @@ def split_mp3_file(filepath):
             # Read and write each chunk to a new file
             for i in range(num_chunks):
                 # Generate the filename for the new chunk
-                filename = f"{os.path.splitext(filepath)[0]}_{i+1}.mp3"
+                filename = f"{os.path.splitext(filepath)[0]}_{i + 1}.mp3"
 
                 # Open the new file for writing
                 with open(filename, 'wb') as chunk_file:
@@ -111,17 +167,18 @@ def split_mp3_file(filepath):
         transcribe(filepath)
 
 
+# Modify the transcribe route to store the generated notes in the global variable and redirect to the /notes route
 @app.route('/transcribe', methods=['POST'])
 def transcribe(file_path):
+    global generated_notes
     audio_file = open(file_path, "rb")
-    # if audio_file is bigger than 25MB, split into multiple files inside their own folder
-    # if file_size > 25 * 1024 * 1024:
-    #     split_audio(audio_file)
 
     transcript = openai.Audio.transcribe("whisper-1", audio_file)
     print(transcript['text'])
+    test = generate_college_level_notes(transcript['text'])
+    generated_notes = test  # Store the generated notes in the global variable
 
-    return jsonify({'text': transcript})
+    return redirect(url_for('notes'))  # Redirect to the /notes route
 
 
 if __name__ == '__main__':
