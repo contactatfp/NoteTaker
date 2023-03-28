@@ -4,6 +4,7 @@ import openai, json
 import yt_dlp
 from urllib.parse import urlparse, parse_qs
 import re
+import pafy
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
@@ -23,8 +24,13 @@ def home():
     return render_template('index.html')
 
 
+@app.route('/loading')
+def loading():
+    return render_template('loading.html')
+
+
 def generate_college_level_notes(text):
-    prompt = f"summarize these as college level notes with video time stamps and youtube time urls for where the note corresponds with video. the timestamp and urls should be inline with each note. make sure to break into multiple notes for different sections: {text}"
+    prompt = f"summarize these as college level notes with video time stamps and youtube time urls for where the note corresponds with video. the timestamp and urls should be inline with each note. make sure to break into multiple notes for different sections. {text}"
     completion = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         max_tokens=1000,
@@ -54,9 +60,9 @@ def process_notes(api_response, video_id):
             text = re.sub(r'\d{1,2}:\d{2}-\d{1,2}:\d{2}', '', text).strip()
             youtube_url = f"https://www.youtube.com/watch?v={video_id}&t={start_time_seconds}s"
         else:
-            timestamp_range = 'Not available'
-            start_time_seconds = 'Not available'
-            youtube_url = 'Not available'
+            timestamp_range = ''
+            start_time_seconds = ''
+            youtube_url = ''
 
         notes.append({
             'text': f"{timestamp_range} - {text}",
@@ -137,6 +143,8 @@ def split_mp3_file(filepath):
     else:
         print(f"{filepath} is already under 25 MB.")
         transcribe(filepath)
+
+    return redirect(url_for('notes'))
 
 
 # Modify the transcribe route to store the generated notes in the global variable and redirect to the /notes route
