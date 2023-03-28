@@ -15,6 +15,7 @@ with open('config.json') as f:
 openai.api_key = config['OPENAI_API_KEY']
 
 generated_notes = ""
+video_id = ""
 
 
 @app.route('/')
@@ -23,7 +24,7 @@ def home():
 
 
 def generate_college_level_notes(text):
-    prompt = f"summarize these as college level notes with video time stamps and youtube time urls for where the note corresponds with video. the timestamp and urls should be inline with each note: {text}"
+    prompt = f"summarize these as college level notes with video time stamps and youtube time urls for where the note corresponds with video. the timestamp and urls should be inline with each note. make sure to break into multiple notes for different sections: {text}"
     completion = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         max_tokens=1000,
@@ -37,32 +38,30 @@ def generate_college_level_notes(text):
     return test
 
 
-def process_notes(api_response):
+def process_notes(api_response, video_id):
     notes = []
     content = api_response['content']
     sections = content.strip().split('\n\n')
 
     for section in sections:
         text = section.strip()
-        timestamp = re.search(r'(\d{1,2}:\d{2}:\d{2})', text)
-        url = re.search(r'(https://www.youtube.com/watch\?v=.+)', text)
+        timestamp = re.search(r'(\d{1,2}:\d{2}-\d{1,2}:\d{2})', text)
 
         if timestamp:
-            timestamp = timestamp.group(1)
-            text = re.sub(r'\d{1,2}:\d{2}:\d{2}', '', text).strip()
+            timestamp_range = timestamp.group(1)
+            start_time = timestamp_range.split('-')[0]
+            start_time_seconds = sum(int(x) * 60 ** i for i, x in enumerate(reversed(start_time.split(":"))))
+            text = re.sub(r'\d{1,2}:\d{2}-\d{1,2}:\d{2}', '', text).strip()
+            youtube_url = f"https://www.youtube.com/watch?v={video_id}&t={start_time_seconds}s"
         else:
-            timestamp = 'Not available'
-
-        if url:
-            url = url.group(1)
-            text = re.sub(r'https://www.youtube.com/watch\?v=.+', '', text).strip()
-        else:
-            url = 'Not available'
+            timestamp_range = 'Not available'
+            start_time_seconds = 'Not available'
+            youtube_url = 'Not available'
 
         notes.append({
-            'text': f"{timestamp} - {text}",
-            'timestamp': timestamp,
-            'url': url
+            'text': f"{timestamp_range} - {text}",
+            'timestamp': timestamp_range,
+            'url': youtube_url
         })
 
     return notes
@@ -71,42 +70,13 @@ def process_notes(api_response):
 # Modify the /notes route to use the global variable for the college_level_notes
 @app.route('/notes', methods=['GET'])
 def notes():
-    # Replace this with the actual college-level notes from your application
-    college_level_notes = process_notes(generated_notes)
+    college_level_notes = process_notes(generated_notes, video_id)
     return render_template('notes.html', notes=college_level_notes)
-
-
-# def process_notes(notes):
-#     # Split the text into paragraphs
-#     paragraphs = notes.split('\n\n')
-#
-#     # Process each paragraph
-#     processed_paragraphs = []
-#     for paragraph in paragraphs:
-#         # Check if the paragraph contains a YouTube URL
-#         if "https://www.youtube.com/watch" in paragraph:
-#             # Extract the URL from the paragraph
-#             url_start = paragraph.index("https://www.youtube.com/watch")
-#             url_end = paragraph.index(")", url_start)
-#             youtube_url = paragraph[url_start:url_end]
-#
-#             # Parse the URL to get the video ID
-#             parsed_url = urlparse(youtube_url)
-#             video_id = parse_qs(parsed_url.query)["v"][0]
-#
-#             # Replace the URL with an actual link
-#             paragraph = paragraph.replace(
-#                 youtube_url,
-#                 f'<a href="{youtube_url}" target="_blank">Video time URL: {video_id}</a>'
-#             )
-#
-#         processed_paragraphs.append(paragraph)
-#
-#     return processed_paragraphs
 
 
 @app.route('/download_audio', methods=['POST'])
 def download_audio():
+    global video_id
     if request.headers['Content-Type'] != 'application/json':
         return jsonify({'error': 'Invalid Content-Type'}), 400
     url = request.json['url']
@@ -126,6 +96,8 @@ def download_audio():
         'audioformat': 'mp3',
         'noplaylist': True
     }
+    parsed_url = urlparse(url)
+    video_id = parse_qs(parsed_url.query)["v"][0]
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     split_mp3_file(thePath + '.mp3')
