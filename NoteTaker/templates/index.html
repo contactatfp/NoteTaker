@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Downloader</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center mt-5">Audio Downloader</h1>
+    <form id="download-form">
+        <div class="form-group">
+            <label for="url-input">Enter YouTube URL:</label>
+            <input type="url" class="form-control" id="url-input" required pattern="^(https?\:\/\/)?(www\.)?youtube\.com\/(watch\?.*v=)?([a-zA-Z0-9_-]{11})($|&).*$">
+            <small id="url-error" class="form-text text-danger d-none">Please enter a valid YouTube URL.</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Get Notes</button>
+    </form>
+
+</div>
+
+<script>
+    const form = document.querySelector('#download-form');
+    const urlInput = document.querySelector('#url-input');
+    const urlError = document.querySelector('#url-error');
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const url = urlInput.value;
+
+        // Redirect to the loading page with the input URL as a query parameter
+        window.location.href = "{{ url_for('loading') }}?url=" + encodeURIComponent(url);
+    });
+
+    urlInput.addEventListener('input', () => {
+        // Check if the input value matches the pattern
+        if (!urlInput.validity.patternMismatch) {
+            urlError.classList.add('d-none');
+        } else {
+            urlError.classList.remove('d-none');
+        }
+    });
+</script>
+</body>
+</html>
